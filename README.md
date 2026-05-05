@@ -3,231 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学霸全能看板</title>
+    <title>学霸全能看板 Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root { --primary: #ff5e57; --secondary: #54a0ff; --bg: #f8f9fa; }
         body { font-family: -apple-system, sans-serif; background: var(--bg); margin: 0; padding: 15px; display: flex; flex-direction: column; align-items: center; }
         .card { background: white; width: 100%; max-width: 400px; border-radius: 20px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); margin-bottom: 15px; box-sizing: border-box; }
-        #timer { font-size: 70px; font-weight: 800; color: var(--primary); text-align: center; margin: 10px 0; }
-        
+        #timer { font-size: 70px; font-weight: 800; color: var(--primary); text-align: center; margin: 10px 0; font-variant-numeric: tabular-nums; }
         .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
         input, select { padding: 12px; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; outline: none; }
         .category-row { display: flex; gap: 5px; }
         .category-row input { flex: 1; }
         .btn-add { background: var(--secondary); color: white; border: none; padding: 0 15px; border-radius: 10px; font-weight: bold; }
-
-        .btns { display: flex; gap: 10px; }
-        button { flex: 1; padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-start { background: var(--primary); color: white; }
-        .btn-cal { background: var(--secondary); color: white; }
-        button:active { transform: scale(0.98); opacity: 0.9; }
-
-        /* 日历弹窗 */
+        .btns { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        button { padding: 15px; border: none; border-radius: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-start { background: var(--primary); color: white; width: 100%; font-size: 18px; }
+        .btn-save { background: #2ecc71; color: white; flex: 1; }
+        .btn-reset { background: #eee; color: #666; flex: 0.5; }
         #calendarModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 100; overflow-y: auto; padding: 20px; box-sizing: border-box; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-        .calendar-day { padding: 12px 0; border-radius: 10px; position: relative; font-size: 14px; background: #f9f9f9; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; margin-top: 10px; }
+        .calendar-day { padding: 12px 0; border-radius: 10px; background: #f9f9f9; font-size: 14px; position: relative; }
         .has-data::after { content: ''; position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; background: var(--primary); border-radius: 50%; }
-        .today { border: 2px solid var(--primary); font-weight: bold; }
-        .selected-day { background: var(--primary) !important; color: white; }
-        
-        /* 统计区块 */
-        .stat-summary { background: #f0f7ff; padding: 15px; border-radius: 15px; margin: 15px 0; text-align: center; }
-        .stat-number { font-size: 24px; font-weight: 800; color: var(--secondary); }
-        canvas { max-width: 100%; margin: 15px 0; }
-        .close-btn { background: #333; color: white; width: 100%; margin-top: 20px; padding: 15px; }
+        .today { border: 2px solid var(--primary); }
     </style>
 </head>
 <body>
 
     <div class="card">
+        <div id="status" style="text-align: center; color: #666;">准备专注了吗？</div>
         <div id="timer">25:00</div>
+        
         <div class="input-group">
-            <input type="text" id="taskName" placeholder="任务名称 (如: 函数练习)">
+            <input type="text" id="taskName" placeholder="任务名称 (如: 英语听力)">
             <select id="categorySelect"></select>
             <div class="category-row">
-                <input type="text" id="newCatInput" placeholder="新增学科">
+                <input type="text" id="newCatInput" placeholder="新增分类">
                 <button class="btn-add" onclick="addNewCategory()">添加</button>
             </div>
         </div>
-                <div class="btns" style="display: flex; flex-direction: column; gap: 10px;">
+
+        <div class="btns">
             <button class="btn-start" id="startBtn" onclick="toggleTimer()">开始专注</button>
             <div style="display: flex; gap: 10px;">
-                <button onclick="saveRecord()" style="background:#2ecc71; color:white;">结束并保存</button>
-                <button onclick="resetTimer()" style="background:#eee; color:#666; flex:0.5;">重置</button>
+                <button class="btn-save" onclick="saveRecord()">完成结算</button>
+                <button class="btn-reset" onclick="resetTimer()">放弃</button>
             </div>
-            <button class="btn-cal" onclick="openCalendar()">查看日历历史</button>
+            <button onclick="openCalendar()" style="background: var(--secondary); color: white;">查看历史日历</button>
         </div>
+    </div>
 
-    <!-- 日历弹窗内容 -->
+    <!-- 日历弹窗 -->
     <div id="calendarModal">
-        <div class="calendar-header">
-            <button onclick="changeMonth(-1)" style="width:auto; padding:5px 15px;">上个月</button>
-            <h3 id="currentMonthDisplay"></h3>
-            <button onclick="changeMonth(1)" style="width:auto; padding:5px 15px;">下个月</button>
+        <div style="display:flex; justify-content: space-between; align-items:center;">
+            <button onclick="changeMonth(-1)">上月</button>
+            <h3 id="monthDisplay"></h3>
+            <button onclick="changeMonth(1)">下月</button>
         </div>
-        
         <div class="calendar-grid" id="calendarGrid"></div>
-
-        <div id="dayDetailArea" style="display:none; margin-top:20px;">
-            <div class="stat-summary">
-                <div id="selectedDateText" style="font-weight:bold; margin-bottom:5px;"></div>
-                今日总专注：<span class="stat-number" id="totalMinutes">0</span> 分钟
-            </div>
+        <div id="dayDetail" style="margin-top:20px; display:none; background:#f0f7ff; padding:15px; border-radius:15px;">
+            <h4 id="detailDate"></h4>
+            <p>总计时: <span id="totalMin" style="font-size:20px; font-weight:bold; color:var(--secondary);">0</span> 分钟</p>
             <canvas id="dayChart"></canvas>
-            <div id="logList" style="font-size:14px; border-top:1px dashed #ddd; padding-top:10px;"></div>
+            <div id="detailLogs"></div>
         </div>
-        
-        <button class="close-btn" onclick="closeCalendar()">返回计时器</button>
+        <button onclick="closeCalendar()" style="width:100%; margin-top:20px; background:#333; color:white; padding:15px; border-radius:12px; border:none;">关闭</button>
     </div>
 
     <script>
-                // 1. 定义状态变量
-        let timeLeft = 25 * 60; 
+        // --- 变量定义 ---
         let timerId = null;
-        let isOvertime = false;      
-        let totalSeconds = 0;        
-        let categories = JSON.parse(localStorage.getItem('my_categories') || '["数学", "英语"]');
+        let startTime = null;
+        let accumulatedSeconds = 0;
+        let totalSeconds = 0;
+        let timeLeft = 25 * 60;
+        let isOvertime = false;
+        let categories = JSON.parse(localStorage.getItem('my_categories') || '["数学", "英语", "其他"]');
         let currentViewDate = new Date();
         let dayChart = null;
 
-        // 2. 计时与暂停逻辑
+        // --- 计时逻辑 (修复切屏问题) ---
         function toggleTimer() {
-                    // --- 新增/修改变量 ---
-        let startTime = null; // 记录点击开始的时刻
-        let accumulatedSeconds = 0; // 记录之前已经累计的秒数（用于暂停后再继续）
+            const btn = document.getElementById('startBtn');
+            const status = document.getElementById('status');
 
-        function toggleTimer() {
-            const startBtn = document.getElementById('startBtn');
             if (timerId) {
-                // 【暂停逻辑】
+                // 暂停
                 clearInterval(timerId);
                 timerId = null;
-                // 暂停时，把这一段跑的时间存入累计变量
                 accumulatedSeconds += Math.floor((Date.now() - startTime) / 1000);
-                startBtn.innerText = "继续专注";
-                startBtn.style.background = "#2ecc71";
+                btn.innerText = "继续专注";
+                btn.style.background = "#2ecc71";
+                status.innerText = "已暂停";
             } else {
-                // 【开始/继续逻辑】
-                startBtn.innerText = "暂停计时";
-                startBtn.style.background = "#f1c40f";
-                
-                // 记录当前时刻的时间戳
+                // 开始
                 startTime = Date.now();
-
+                btn.innerText = "暂停计时";
+                btn.style.background = "#f1c40f";
+                status.innerText = "正在专注中...";
+                
                 timerId = setInterval(() => {
-                    // 核心计算：总时间 = 之前累计的 + (现在的时间 - 这一段开始的时间)
-                    const currentSegmentSeconds = Math.floor((Date.now() - startTime) / 1000);
-                    totalSeconds = accumulatedSeconds + currentSegmentSeconds;
-                    
-                    // 计算剩余时间或叠加时间
-                    const baseWorkTime = 25 * 60;
-                    if (totalSeconds < baseWorkTime) {
+                    const currentSegment = Math.floor((Date.now() - startTime) / 1000);
+                    totalSeconds = accumulatedSeconds + currentSegment;
+
+                    const baseTime = 25 * 60;
+                    if (totalSeconds < baseTime) {
                         isOvertime = false;
-                        timeLeft = baseWorkTime - totalSeconds;
-                        document.getElementById('timer').style.color = "#ff5e57";
+                        timeLeft = baseTime - totalSeconds;
+                        document.getElementById('timer').style.color = "var(--primary)";
                     } else {
                         isOvertime = true;
-                        timeLeft = totalSeconds - baseWorkTime;
+                        timeLeft = totalSeconds - baseTime;
                         document.getElementById('timer').style.color = "#2ecc71";
+                        status.innerText = "目标达成！冲刺中...";
                     }
                     updateDisplay();
-                }, 100); // 提高刷新频率到 100ms，让数字跳动更流畅
+                }, 200); 
             }
         }
 
-        // 修改 saveRecord 和 resetTimer 中的重置逻辑
-        function resetState() {
-            clearInterval(timerId);
-            timerId = null;
-            totalSeconds = 0;
-            accumulatedSeconds = 0; // 必须重置这个
-            startTime = null;
-            timeLeft = 25 * 60;
-            isOvertime = false;
-            document.getElementById('timer').style.color = "#ff5e57";
-            updateDisplay();
-            document.getElementById('startBtn').innerText = "开始专注";
-            document.getElementById('startBtn').style.background = "#ff5e57";
-        }
-
-        }
-
-        // 3. 显示刷新
         function updateDisplay() {
             const m = Math.floor(Math.abs(timeLeft) / 60);
             const s = Math.floor(Math.abs(timeLeft) % 60);
-            const prefix = isOvertime ? "+" : ""; 
+            const prefix = isOvertime ? "+" : "";
             document.getElementById('timer').textContent = `${prefix}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
         }
 
-        // 4. 手动保存结算（关键！）
         function saveRecord() {
-            if (totalSeconds < 5) {
-                alert("时间太短，不记录哦");
-                return;
-            }
-            if (!confirm(`本次已专注 ${Math.floor(totalSeconds/60)} 分钟，确定结算并保存吗？`)) return;
+            if (totalSeconds < 5) { alert("时间太短，不予记录"); return; }
+            if (!confirm(`本次专注了 ${Math.floor(totalSeconds/60)} 分钟，存入历史吗？`)) return;
 
-            clearInterval(timerId);
-            timerId = null;
             const now = new Date();
-            const today = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
+            const dateStr = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
             const history = JSON.parse(localStorage.getItem('pomodoro_v2') || '{}');
-            if (!history[today]) history[today] = [];
+            if (!history[dateStr]) history[dateStr] = [];
 
-            history[today].push({
+            history[dateStr].push({
                 cat: document.getElementById('categorySelect').value,
                 task: document.getElementById('taskName').value || "专注任务",
-                duration: Math.round(totalSeconds / 60 * 10) / 10, 
-                time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                duration: Math.round(totalSeconds / 60 * 10) / 10,
+                time: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
             });
 
             localStorage.setItem('pomodoro_v2', JSON.stringify(history));
-            
-            // 重置所有状态回到初始
-            totalSeconds = 0;
-            timeLeft = 25 * 60;
-            isOvertime = false;
-            document.getElementById('timer').style.color = "#ff5e57";
-            document.getElementById('startBtn').innerText = "开始专注";
-            document.getElementById('startBtn').style.background = "#ff5e57";
-            updateDisplay();
+            resetAll();
             alert("保存成功！");
         }
 
-        // 5. 放弃当前进度
         function resetTimer() {
-            if (confirm("确定要放弃本次进度吗？")) {
-                clearInterval(timerId);
-                timerId = null;
-                totalSeconds = 0;
-                timeLeft = 25 * 60;
-                isOvertime = false;
-                document.getElementById('timer').style.color = "#ff5e57";
-                updateDisplay();
-                document.getElementById('startBtn').innerText = "开始专注";
-                document.getElementById('startBtn').style.background = "#ff5e57";
-            }
+            if (confirm("确定放弃本次进度吗？")) resetAll();
         }
 
-        // 6. 分类管理
-        function updateCategoryDropdown() {
-            document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        function resetAll() {
+            clearInterval(timerId);
+            timerId = null;
+            startTime = null;
+            accumulatedSeconds = 0;
+            totalSeconds = 0;
+            timeLeft = 25 * 60;
+            isOvertime = false;
+            updateDisplay();
+            document.getElementById('timer').style.color = "var(--primary)";
+            document.getElementById('startBtn').innerText = "开始专注";
+            document.getElementById('startBtn').style.background = "var(--primary)";
+            document.getElementById('status').innerText = "准备专注了吗？";
         }
 
+        // --- 分类与日历 (保持之前功能) ---
         function addNewCategory() {
             const val = document.getElementById('newCatInput').value.trim();
             if (val && !categories.includes(val)) {
                 categories.push(val);
                 localStorage.setItem('my_categories', JSON.stringify(categories));
-                updateCategoryDropdown();
+                renderCats();
                 document.getElementById('newCatInput').value = "";
             }
         }
 
-        // --- 日历统计系统 ---
+        function renderCats() {
+            document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
         function openCalendar() {
             document.getElementById('calendarModal').style.display = 'block';
             renderCalendar();
@@ -240,60 +195,42 @@
             const history = JSON.parse(localStorage.getItem('pomodoro_v2') || '{}');
             grid.innerHTML = '';
             const y = currentViewDate.getFullYear(), m = currentViewDate.getMonth();
-            document.getElementById('currentMonthDisplay').innerText = `${y}年 ${m + 1}月`;
-
+            document.getElementById('monthDisplay').innerText = `${y}年 ${m+1}月`;
             const firstDay = new Date(y, m, 1).getDay();
-            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            const daysInMonth = new Date(y, m+1, 0).getDate();
 
             for (let i = 0; i < firstDay; i++) grid.innerHTML += '<div></div>';
             for (let d = 1; d <= daysInMonth; d++) {
-                const dateStr = `${y}-${m+1}-${d}`;
-                const hasData = history[dateStr] ? 'has-data' : '';
-                const isToday = `${new Date().getFullYear()}-${new Date().getMonth()+1}-${new Date().getDate()}` === dateStr ? 'today' : '';
-                grid.innerHTML += `<div class="calendar-day ${hasData} ${isToday}" onclick="showDayDetail('${dateStr}')">${d}</div>`;
+                const dStr = `${y}-${m+1}-${d}`;
+                const hasData = history[dStr] ? 'has-data' : '';
+                grid.innerHTML += `<div class="calendar-day ${hasData}" onclick="showDetail('${dStr}')">${d}</div>`;
             }
         }
 
-        function showDayDetail(dateStr) {
+        function showDetail(dStr) {
             const history = JSON.parse(localStorage.getItem('pomodoro_v2') || '{}');
-            const records = history[dateStr] || [];
-            document.getElementById('dayDetailArea').style.display = 'block';
-            document.getElementById('selectedDateText').innerText = dateStr;
+            const records = history[dStr] || [];
+            document.getElementById('dayDetail').style.display = 'block';
+            document.getElementById('detailDate').innerText = dStr;
             
-            // 计算时长和分布
-            let total = 0;
-            const summary = {};
-            records.forEach(r => {
-                total += (r.duration || 25);
-                summary[r.cat] = (summary[r.cat] || 0) + (r.duration || 25);
-            });
+            let total = 0; const sum = {};
+            records.forEach(r => { total += r.duration; sum[r.cat] = (sum[r.cat] || 0) + r.duration; });
+            document.getElementById('totalMin').innerText = total.toFixed(1);
 
-            document.getElementById('totalMinutes').innerText = total;
-
-            // 渲染列表
-            document.getElementById('logList').innerHTML = records.map(r => 
-                `<div style="margin-bottom:5px;">🕒 [${r.time}] <b>${r.cat}</b>: ${r.task}</div>`
-            ).reverse().join('');
-
-            // 更新饼图
             const ctx = document.getElementById('dayChart').getContext('2d');
             if (dayChart) dayChart.destroy();
             dayChart = new Chart(ctx, {
                 type: 'doughnut',
-                data: {
-                    labels: Object.keys(summary),
-                    datasets: [{
-                        data: Object.values(summary),
-                        backgroundColor: ['#ff5e57', '#54a0ff', '#1dd1a1', '#ffbe76', '#a29bfe']
-                    }]
-                },
-                options: { plugins: { legend: { position: 'bottom' } } }
+                data: { labels: Object.keys(sum), datasets: [{ data: Object.values(sum), backgroundColor: ['#ff5e57', '#54a0ff', '#1dd1a1', '#ffbe76', '#a29bfe'] }] }
             });
+            document.getElementById('detailLogs').innerHTML = records.map(r => `<div style="font-size:12px; margin-top:5px;">[${r.time}] ${r.cat}: ${r.task} (${r.duration}m)</div>`).join('');
         }
 
         function changeMonth(dir) { currentViewDate.setMonth(currentViewDate.getMonth() + dir); renderCalendar(); }
 
-        updateCategoryDropdown(); updateDisplay();
+        // 初始化
+        renderCats();
+        updateDisplay();
     </script>
 </body>
 </html>
