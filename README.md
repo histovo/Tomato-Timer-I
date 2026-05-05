@@ -51,11 +51,14 @@
                 <button class="btn-add" onclick="addNewCategory()">添加</button>
             </div>
         </div>
-        <div class="btns">
+                <div class="btns" style="display: flex; flex-direction: column; gap: 10px;">
             <button class="btn-start" id="startBtn" onclick="toggleTimer()">开始专注</button>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="saveRecord()" style="background:#2ecc71; color:white;">结束并保存</button>
+                <button onclick="resetTimer()" style="background:#eee; color:#666; flex:0.5;">重置</button>
+            </div>
             <button class="btn-cal" onclick="openCalendar()">查看日历历史</button>
         </div>
-    </div>
 
     <!-- 日历弹窗内容 -->
     <div id="calendarModal">
@@ -80,34 +83,61 @@
     </div>
 
     <script>
-        let timeLeft = 25 * 60;
+                // 1. 定义状态变量
+        let timeLeft = 25 * 60; 
         let timerId = null;
+        let isOvertime = false;      
+        let totalSeconds = 0;        
         let categories = JSON.parse(localStorage.getItem('my_categories') || '["数学", "英语"]');
         let currentViewDate = new Date();
         let dayChart = null;
 
-        // --- 核心计时 ---
+        // 2. 计时与暂停逻辑
         function toggleTimer() {
+            const startBtn = document.getElementById('startBtn');
             if (timerId) {
-                clearInterval(timerId); timerId = null;
-                document.getElementById('startBtn').innerText = "继续";
+                clearInterval(timerId);
+                timerId = null;
+                startBtn.innerText = "继续专注";
+                startBtn.style.background = "#2ecc71"; 
             } else {
-                document.getElementById('startBtn').innerText = "暂停";
+                startBtn.innerText = "暂停计时";
+                startBtn.style.background = "#f1c40f"; 
                 timerId = setInterval(() => {
-                    if (timeLeft > 0) { timeLeft--; updateDisplay(); }
-                    else { saveRecord(); }
+                    totalSeconds++; 
+                    if (!isOvertime) {
+                        if (timeLeft > 0) { timeLeft--; } 
+                        else {
+                            isOvertime = true;
+                            document.getElementById('timer').style.color = "#2ecc71"; 
+                            if (navigator.vibrate) navigator.vibrate(200);
+                        }
+                    } else {
+                        timeLeft++; 
+                    }
+                    updateDisplay();
                 }, 1000);
             }
         }
 
+        // 3. 显示刷新
         function updateDisplay() {
-            const m = Math.floor(timeLeft / 60);
-            const s = timeLeft % 60;
-            document.getElementById('timer').textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            const m = Math.floor(Math.abs(timeLeft) / 60);
+            const s = Math.floor(Math.abs(timeLeft) % 60);
+            const prefix = isOvertime ? "+" : ""; 
+            document.getElementById('timer').textContent = `${prefix}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
         }
 
+        // 4. 手动保存结算（关键！）
         function saveRecord() {
-            clearInterval(timerId); timerId = null;
+            if (totalSeconds < 5) {
+                alert("时间太短，不记录哦");
+                return;
+            }
+            if (!confirm(`本次已专注 ${Math.floor(totalSeconds/60)} 分钟，确定结算并保存吗？`)) return;
+
+            clearInterval(timerId);
+            timerId = null;
             const now = new Date();
             const today = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}`;
             const history = JSON.parse(localStorage.getItem('pomodoro_v2') || '{}');
@@ -115,23 +145,40 @@
 
             history[today].push({
                 cat: document.getElementById('categorySelect').value,
-                task: document.getElementById('taskName').value || "专注",
-                duration: 25, // 每个番茄钟默认25分钟
+                task: document.getElementById('taskName').value || "专注任务",
+                duration: Math.round(totalSeconds / 60 * 10) / 10, 
                 time: now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
             });
 
             localStorage.setItem('pomodoro_v2', JSON.stringify(history));
-            alert("太棒了！完成一个番茄！");
-            resetTimer();
-        }
-
-        function resetTimer() {
-            clearInterval(timerId); timerId = null;
-            timeLeft = 25 * 60; updateDisplay();
+            
+            // 重置所有状态回到初始
+            totalSeconds = 0;
+            timeLeft = 25 * 60;
+            isOvertime = false;
+            document.getElementById('timer').style.color = "#ff5e57";
             document.getElementById('startBtn').innerText = "开始专注";
+            document.getElementById('startBtn').style.background = "#ff5e57";
+            updateDisplay();
+            alert("保存成功！");
         }
 
-        // --- 分类管理 ---
+        // 5. 放弃当前进度
+        function resetTimer() {
+            if (confirm("确定要放弃本次进度吗？")) {
+                clearInterval(timerId);
+                timerId = null;
+                totalSeconds = 0;
+                timeLeft = 25 * 60;
+                isOvertime = false;
+                document.getElementById('timer').style.color = "#ff5e57";
+                updateDisplay();
+                document.getElementById('startBtn').innerText = "开始专注";
+                document.getElementById('startBtn').style.background = "#ff5e57";
+            }
+        }
+
+        // 6. 分类管理
         function updateCategoryDropdown() {
             document.getElementById('categorySelect').innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
         }
