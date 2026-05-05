@@ -94,30 +94,64 @@
 
         // 2. 计时与暂停逻辑
         function toggleTimer() {
+                    // --- 新增/修改变量 ---
+        let startTime = null; // 记录点击开始的时刻
+        let accumulatedSeconds = 0; // 记录之前已经累计的秒数（用于暂停后再继续）
+
+        function toggleTimer() {
             const startBtn = document.getElementById('startBtn');
             if (timerId) {
+                // 【暂停逻辑】
                 clearInterval(timerId);
                 timerId = null;
+                // 暂停时，把这一段跑的时间存入累计变量
+                accumulatedSeconds += Math.floor((Date.now() - startTime) / 1000);
                 startBtn.innerText = "继续专注";
-                startBtn.style.background = "#2ecc71"; 
+                startBtn.style.background = "#2ecc71";
             } else {
+                // 【开始/继续逻辑】
                 startBtn.innerText = "暂停计时";
-                startBtn.style.background = "#f1c40f"; 
+                startBtn.style.background = "#f1c40f";
+                
+                // 记录当前时刻的时间戳
+                startTime = Date.now();
+
                 timerId = setInterval(() => {
-                    totalSeconds++; 
-                    if (!isOvertime) {
-                        if (timeLeft > 0) { timeLeft--; } 
-                        else {
-                            isOvertime = true;
-                            document.getElementById('timer').style.color = "#2ecc71"; 
-                            if (navigator.vibrate) navigator.vibrate(200);
-                        }
+                    // 核心计算：总时间 = 之前累计的 + (现在的时间 - 这一段开始的时间)
+                    const currentSegmentSeconds = Math.floor((Date.now() - startTime) / 1000);
+                    totalSeconds = accumulatedSeconds + currentSegmentSeconds;
+                    
+                    // 计算剩余时间或叠加时间
+                    const baseWorkTime = 25 * 60;
+                    if (totalSeconds < baseWorkTime) {
+                        isOvertime = false;
+                        timeLeft = baseWorkTime - totalSeconds;
+                        document.getElementById('timer').style.color = "#ff5e57";
                     } else {
-                        timeLeft++; 
+                        isOvertime = true;
+                        timeLeft = totalSeconds - baseWorkTime;
+                        document.getElementById('timer').style.color = "#2ecc71";
                     }
                     updateDisplay();
-                }, 1000);
+                }, 100); // 提高刷新频率到 100ms，让数字跳动更流畅
             }
+        }
+
+        // 修改 saveRecord 和 resetTimer 中的重置逻辑
+        function resetState() {
+            clearInterval(timerId);
+            timerId = null;
+            totalSeconds = 0;
+            accumulatedSeconds = 0; // 必须重置这个
+            startTime = null;
+            timeLeft = 25 * 60;
+            isOvertime = false;
+            document.getElementById('timer').style.color = "#ff5e57";
+            updateDisplay();
+            document.getElementById('startBtn').innerText = "开始专注";
+            document.getElementById('startBtn').style.background = "#ff5e57";
+        }
+
         }
 
         // 3. 显示刷新
